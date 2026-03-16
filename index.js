@@ -6,10 +6,12 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import crypto from "node:crypto";
 import express from "express";
 
 // ── Konfiguration aus Umgebungsvariablen ──────────────────────────────────────
@@ -409,7 +411,11 @@ function createMCPServer() {
 
 // ── Express App ───────────────────────────────────────────────────────────────
 const app = express();
-app.use(express.json());
+// JSON-Parsing nur für Nicht-MCP-Routen (StreamableHTTP parsed selbst)
+app.use((req, res, next) => {
+  if (req.path === "/mcp") return next();
+  express.json()(req, res, next);
+});
 
 // Health-Check
 app.get("/health", (_req, res) => {
@@ -422,27 +428,68 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// SSE Verbindungsendpunkt – Claude Desktop verbindet sich hier
-const transports = {};
+// Streamable HTTP Endpoint (neues Protokoll – bevorzugt von mcp-remote)
+const httpTransports = {};
+
+app.post("/mcp", async (req, res) => {
+  const sessionId = req.headers["mcp-session-id"];
+  if (sessionId && httpTransports[sessionId]) {
+    await httpTransports[sessionId].handleRequest(req, res);
+    return;
+  }
+  if (sessionId && !httpTransports[sessionId]) {
+    res.status(400).json({ error: "Ungültige Session" });
+    return;
+  }
+  // Neue Session (initialize request)
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => crypto.randomUUID() });
+  transport.onclose = () => { delete httpTransports[transport.sessionId]; };
+  const server = createMCPServer();
+  await server.connect(transport);
+  await transport.handleRequest(req, res);
+  httpTransports[transport.sessionId] = transport;
+  console.log(`[${new Date().toISOString()}] Neue Streamable-HTTP-Session: ${transport.sessionId}`);
+});
+
+app.get("/mcp", async (req, res) => {
+  const sessionId = req.headers["mcp-session-id"];
+  if (!sessionId || !httpTransports[sessionId]) {
+    res.status(400).json({ error: "Session nicht gefunden" });
+    return;
+  }
+  await httpTransports[sessionId].handleRequest(req, res);
+});
+
+app.delete("/mcp", async (req, res) => {
+  const sessionId = req.headers["mcp-session-id"];
+  if (sessionId && httpTransports[sessionId]) {
+    await httpTransports[sessionId].handleRequest(req, res);
+    delete httpTransports[sessionId];
+    return;
+  }
+  res.status(404).json({ error: "Session nicht gefunden" });
+});
+
+// SSE Verbindungsendpunkt (Legacy – Fallback)
+const sseTransports = {};
 
 app.get("/sse", async (req, res) => {
   console.log(`[${new Date().toISOString()}] Neue SSE-Verbindung von ${req.ip}`);
   const transport = new SSEServerTransport("/message", res);
-  transports[transport.sessionId] = transport;
+  sseTransports[transport.sessionId] = transport;
 
   res.on("close", () => {
     console.log(`[${new Date().toISOString()}] SSE-Verbindung getrennt (${transport.sessionId})`);
-    delete transports[transport.sessionId];
+    delete sseTransports[transport.sessionId];
   });
 
   const server = createMCPServer();
   await server.connect(transport);
 });
 
-// POST Nachrichten-Endpoint
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
-  const transport = transports[sessionId];
+  const transport = sseTransports[sessionId];
   if (!transport) {
     res.status(404).json({ error: "Session nicht gefunden" });
     return;

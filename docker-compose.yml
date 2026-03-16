@@ -2,7 +2,7 @@ services:
   monkey-office-mcp:
     build: .
     # Alternativ nach dem Push zu ghcr.io:
-    # image: ghcr.io/DEIN-GITHUB-USERNAME/monkey-office-mcp:latest
+    # image: ghcr.io/kustus/MO-Connect-MCP:latest
     container_name: monkey-office-mcp
     restart: unless-stopped
     ports:

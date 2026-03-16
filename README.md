@@ -38,7 +38,7 @@ Die `Firma_ID` aus der Antwort brauchst du gleich in Schritt 3.
 
 ```bash
 # Repo klonen (nachdem du es auf GitHub angelegt hast)
-git clone https://github.com/DEIN-USERNAME/monkey-office-mcp.git
+git clone https://github.com/kustus/MO-Connect-MCP.git
 cd monkey-office-mcp
 
 # Dateien hinzufügen und pushen
@@ -62,7 +62,7 @@ git push origin main
    ```bash
    mkdir -p /share/Container/monkey-office-mcp
    cd /share/Container/monkey-office-mcp
-   git clone https://github.com/DEIN-USERNAME/monkey-office-mcp.git .
+   git clone https://github.com/kustus/MO-Connect-MCP.git .
    ```
 
 3. **docker-compose.yml anpassen** – trage deine Zugangsdaten ein:

@@ -1,0 +1,21 @@
+services:
+  monkey-office-mcp:
+    build: .
+    # Alternativ nach dem Push zu ghcr.io:
+    # image: ghcr.io/DEIN-GITHUB-USERNAME/monkey-office-mcp:latest
+    container_name: monkey-office-mcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # MonKey Office Connect URL (im gleichen LAN erreichbar)
+      MO_URL:       "http://192.168.178.53:8084/monkeyOfficeConnectJSON"
+      # API-Benutzer (kein Admin-User!)
+      MO_USER:      "DEIN_API_USER"
+      MO_PASS:      "DEIN_API_PASSWORT"
+      # Firma-ID – einmalig über firma_list ermitteln, dann hier eintragen
+      MO_FIRMA_KEY: "DEINE_FIRMA_ID"
+      PORT:         "3000"
+    # Verhindert, dass der Container beim Neustart auf Netzwerk wartet
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

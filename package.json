@@ -1,0 +1,17 @@
+{
+  "name": "monkey-office-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server für MonKey Office Connect JSON-API",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
